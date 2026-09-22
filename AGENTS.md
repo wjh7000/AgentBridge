@@ -82,8 +82,8 @@ rather than implying the round trip has been tested.
 | --- | --- | --- |
 | Save a handoff | `$handoff send` | `/handoff send` |
 | Pick one up | `$handoff receive` | `/handoff receive` |
-| List handoffs | `$handoff list` | `/handoff list` |
-| Check the integration | `$handoff check` | `/handoff check` |
+
+`handoff list` also exists, to see what is pending without claiming it.
 
 Handoffs are shared only inside the workspace directory you have open, and the
 first call in a workspace establishes that boundary automatically.

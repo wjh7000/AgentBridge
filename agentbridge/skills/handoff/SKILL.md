@@ -13,7 +13,9 @@ The handoff boundary is the current workspace directory (`--cwd`) itself: handof
 
 For `send`, `receive`, `list`, or `check`, first run `python3 <helper> check --cwd <actual-cwd>`. If this same conversation already has a verified `session_id` from an earlier check, pass it as `--session <session_id>` on this check as well. Reuse that identity for every subsequent invocation in this conversation, not only this turn; never borrow another conversation's identity. Only the first check without an available identity may create one. Require exit code 0 and JSON with `ok: true`, `backend: "agentbridge"`, and `protocol_version: 2`. Reuse the returned `session_id` through `--session <session_id>` in subsequent calls. Use returned paths and identifiers, not guessed ones. Missing helper/configuration, an invalid registration, incompatible protocol, malformed output, or nonzero exit means stop and report the actual error. Do not replace the helper or fabricate a textual handoff as a fallback.
 
-Supported actions: `send`, `receive`, `list`, `check`, `help`. If no action was supplied, run `help --cwd <actual-cwd>` and show the short usage. Quote paths correctly; write JSON using a file-writing tool or a literal quoted heredoc, never shell interpolation.
+Supported actions: `send`, `receive`, `list`, `check`, `help`. If no action was supplied, run `help --cwd <actual-cwd>` and show the short usage.
+
+When showing the user what they can do, present **`send` and `receive`** as the actions, and mention `list` in a single trailing line as a way to see what is pending without claiming it. Never present `check` or `help` as things the user invokes: `check` is the preflight every action already runs for itself, and `help` is simply what happens when no action is given. Listing all five as equal choices misrepresents plumbing as a menu. Quote paths correctly; write JSON using a file-writing tool or a literal quoted heredoc, never shell interpolation.
 
 ## Send
 

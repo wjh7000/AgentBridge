@@ -4,11 +4,10 @@
 
 | 操作 | Codex | Claude Code / WorkBuddy |
 | --- | --- | --- |
-| 整理并保存交接 | `$handoff send` | `/handoff send` |
-| 接收并继续当前任务 | `$handoff receive` | `/handoff receive` |
-| 查看交接索引 | `$handoff list` | `/handoff list` |
-| 检查接入 | `$handoff check` | `/handoff check` |
-| 查看用法 | `$handoff help` | `/handoff help` |
+| 把当前进度整理成交接单 | `$handoff send` | `/handoff send` |
+| 接手一份交接单 | `$handoff receive` | `/handoff receive` |
+
+**日常只需要这两个。** 另有 `handoff list` 只看待领列表、不认领；不带动作调用显示用法。`check` 是每个动作自己会先跑的前置检查，不是给你敲的。
 
 先刷新或重启客户端，确认技能选择器中出现 `handoff`，再选择并填写操作。Codex 使用 `$` 的 skill 引用；不要假设 `/handoff` 是 Codex 内置命令。Claude Code、WorkBuddy、MiMoCode 使用 slash skill。已有聊天能否即时刷新取决于客户端；没出现时先新建同项目会话或重启。
 

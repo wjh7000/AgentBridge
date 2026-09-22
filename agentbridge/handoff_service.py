@@ -310,7 +310,7 @@ def dispatch(action, cwd, agent, session=None, file=None, packet_id=None):
         if action not in ("check", "send", "receive", "list", "help"):
             raise _ServiceError("invalid_action", "Action must be check, send, receive, list, or help.")
         if action == "help":
-            return _result(True, status="help", message="check prepares a private draft path and session_id; send saves that JSON draft; receive claims one project handoff; list shows metadata. Reuse check's session_id for send and receive. No operation calls a model.")
+            return _result(True, status="help", message="Two actions: send saves this conversation's progress as a handoff; receive picks one up in this workspace. Also available: list shows what is pending without claiming it. Handoffs are shared only inside this workspace directory, and nothing here calls a model.")
         try:
             agent = _agent(agent)
         except ValueError:

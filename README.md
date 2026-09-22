@@ -82,10 +82,11 @@ prove a client has loaded them.
 
 | Action | Codex | Claude Code / WorkBuddy / MiMoCode |
 | --- | --- | --- |
-| Write and save a handoff | `$handoff send` | `/handoff send` |
+| Save this conversation's progress | `$handoff send` | `/handoff send` |
 | Pick one up and continue | `$handoff receive` | `/handoff receive` |
-| List handoffs | `$handoff list` | `/handoff list` |
-| Check the integration | `$handoff check` | `/handoff check` |
+
+Those are the two you need. `handoff list` also exists, to see what is pending
+without claiming it; invoking the skill with no action prints the usage.
 
 **You never name a recipient.** The handoff is stored in the current workspace; whichever tool runs `receive` **in the same directory** claims it. The first session to claim it owns it, and the sending session cannot claim its own — if you try, it says so plainly rather than reporting "nothing here". If several are waiting, you are shown their IDs and asked to choose — unrelated tasks are never merged.
 

@@ -72,10 +72,10 @@ Installed claude    -> /Users/you/.claude/skills/handoff
 
 | 操作 | Codex | Claude Code / WorkBuddy / MiMoCode |
 | --- | --- | --- |
-| 整理并保存交接 | `$handoff send` | `/handoff send` |
-| 接收并继续 | `$handoff receive` | `/handoff receive` |
-| 查看交接索引 | `$handoff list` | `/handoff list` |
-| 检查接入 | `$handoff check` | `/handoff check` |
+| 把当前进度整理成交接单 | `$handoff send` | `/handoff send` |
+| 接手一份交接单 | `$handoff receive` | `/handoff receive` |
+
+**日常就这两个。** 另有 `handoff list` 可以只看待领列表、不认领;不带动作调用则显示用法。
 
 **不需要指定发给谁。** 交接保存在当前工作区，另一个工具在**同一目录**里 `receive` 即可领取；第一个主动领取的会话取得归属，来源会话不能自领——真去领时会明确告诉你「这是本对话自己写的」，而不是含糊地说「没有」。多份待领时会列出编号让你选，不会自动合并任务。
 
