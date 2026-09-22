@@ -22,8 +22,8 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/junhan/agentbridge-handoff"
-Repository = "https://github.com/junhan/agentbridge-handoff"
+Homepage = "https://github.com/wjh7000/agentbridge-handoff"
+Repository = "https://github.com/wjh7000/agentbridge-handoff"
 
 [project.scripts]
 agentbridge = "agentbridge.cli:main"
