@@ -21,13 +21,13 @@ python3 install.py
 从 GitHub 拉取后首次安装（免打包，直接用克隆目录）：
 
 ```bash
-git clone https://github.com/wjh7000/agentbridge-handoff.git agentbridge && cd agentbridge && python3 install.py
+git clone https://github.com/wjh7000/AgentBridge.git agentbridge && cd agentbridge && python3 install.py
 ```
 
 或作为标准 Python 包安装（推荐给不想留着克隆目录的场景，需 Python 3.9+）：
 
 ```bash
-pipx install git+https://github.com/wjh7000/agentbridge-handoff.git   # 或 pip install git+…
+pipx install git+https://github.com/wjh7000/AgentBridge.git   # 或 pip install git+…
 agentbridge-install               # 自动探测客户端并安装 handoff skill
 ```
 

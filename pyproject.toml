@@ -3,7 +3,7 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "agentbridge-handoff"
+name = "agentbridge"
 version = "0.2.0"
 description = "Local, project-scoped progress sharing and explicit handoffs across Codex, Claude Code, and WorkBuddy."
 readme = "README.md"
@@ -22,8 +22,8 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/wjh7000/agentbridge-handoff"
-Repository = "https://github.com/wjh7000/agentbridge-handoff"
+Homepage = "https://github.com/wjh7000/AgentBridge"
+Repository = "https://github.com/wjh7000/AgentBridge"
 
 [project.scripts]
 agentbridge = "agentbridge.cli:main"
