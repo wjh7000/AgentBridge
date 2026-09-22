@@ -9,7 +9,8 @@ from unittest.mock import patch
 
 from agentbridge import skill_install
 
-from agentbridge.skill_install import CLIENTS, DIRECTORIES, MANIFEST, install_skills, uninstall_skills
+from agentbridge.skill_install import (CLIENTS, DIRECTORIES, MANIFEST, client_root,
+                                       install_skills, uninstall_skills)
 
 
 class TemporarySkillCase(unittest.TestCase):
@@ -21,7 +22,7 @@ class TemporarySkillCase(unittest.TestCase):
         self.home.mkdir()
 
     def skill(self, agent="codex"):
-        return self.home / DIRECTORIES[agent] / "skills/handoff"
+        return client_root(agent, self.home) / "skills/handoff"
 
     def snapshot(self, directory):
         return {str(path.relative_to(directory)): path.read_bytes()
@@ -35,9 +36,9 @@ class SkillInstallationTests(TemporarySkillCase):
         self.assertEqual({item["agent"] for item in result["skills"]}, set(CLIENTS))
         self.assertEqual(list(self.home.iterdir()), [])
 
-    def test_installs_three_clients_with_fixed_identity_and_explicit_policies(self):
+    def test_installs_every_client_with_fixed_identity_and_explicit_policies(self):
         result = install_skills(home=self.home)
-        self.assertEqual(len(result["skills"]), 3)
+        self.assertEqual(len(result["skills"]), len(CLIENTS))
         for agent in CLIENTS:
             with self.subTest(agent=agent):
                 folder = self.skill(agent)
@@ -101,7 +102,7 @@ class SkillInstallationTests(TemporarySkillCase):
     def test_complete_uninstall_is_repeatable(self):
         install_skills(home=self.home)
         result = uninstall_skills(home=self.home)
-        self.assertEqual(len(result["removed"]), 3)
+        self.assertEqual(len(result["removed"]), len(CLIENTS))
         self.assertTrue(all(not self.skill(agent).exists() for agent in CLIENTS))
         self.assertEqual(uninstall_skills(home=self.home)["removed"], [])
 
@@ -126,6 +127,32 @@ class SkillInstallationTests(TemporarySkillCase):
                 self.assertEqual(result["removed"], [])
                 self.assertEqual(self.snapshot(self.home), before)
 
+    def test_mimocode_uses_whichever_documented_directory_exists(self):
+        # MiMoCode documents two global roots; install into the one already there.
+        self.assertEqual(client_root("mimocode", self.home), self.home / ".config/mimocode")
+        (self.home / ".mimocode").mkdir()
+        self.assertEqual(client_root("mimocode", self.home), self.home / ".mimocode")
+        (self.home / ".config/mimocode").mkdir(parents=True)
+        self.assertEqual(client_root("mimocode", self.home), self.home / ".config/mimocode")
+
+    def test_frontmatter_only_carries_keys_the_client_documents(self):
+        install_skills(home=self.home)
+        mimo = (self.skill("mimocode") / "SKILL.md").read_text()
+        claude = (self.skill("claude") / "SKILL.md").read_text()
+        codex = (self.skill("codex") / "SKILL.md").read_text()
+        for text in (mimo, claude):
+            self.assertIn("disable-model-invocation: true", text)
+            self.assertIn("user-invocable: true", text)
+        # MiMoCode does not document argument-hint, and has no native session id.
+        self.assertNotIn("argument-hint", mimo)
+        self.assertIn("argument-hint", claude)
+        self.assertNotIn("${", mimo.split("## Send")[0].split("---", 2)[-1][:400])
+        self.assertIn("CLAUDE_SESSION_ID", claude)
+        # Codex is steered by its own policy file instead of frontmatter.
+        self.assertNotIn("disable-model-invocation", codex)
+        self.assertIn("allow_implicit_invocation: false",
+                      (self.skill("codex") / "agents/openai.yaml").read_text())
+
     def test_invalid_client_has_no_side_effects(self):
         with self.assertRaises(ValueError):
             install_skills(("codex", "unknown"), home=self.home)
@@ -146,7 +173,7 @@ class SkillInstallationTests(TemporarySkillCase):
     def test_uninstall_validates_all_clients_before_removing_any(self):
         install_skills(home=self.home)
         before = self.snapshot(self.home)
-        with self.assertRaisesRegex(ValueError, "codex,claude,workbuddy"):
+        with self.assertRaisesRegex(ValueError, "clients must be"):
             uninstall_skills(("codex", "unknown"), home=self.home)
         self.assertEqual(self.snapshot(self.home), before)
         self.assertTrue((self.skill("codex") / MANIFEST).is_file())
@@ -245,6 +272,18 @@ class SkillAdapterTests(TemporarySkillCase):
     def test_missing_backend_is_failure(self):
         self.rewrite_config(command=[sys.executable, str(self.root / "missing.py")])
         self.assertEqual(self.call()["code"], "backend_missing")
+
+    def test_helper_checks_the_identifier_shape_not_a_hardcoded_list(self):
+        # Supporting a new client must never require editing the installed
+        # helper: it validates the shape, the backend owns which names exist.
+        path = self.skill() / "bridge.json"
+        value = json.loads(path.read_text())
+        path.write_text(json.dumps(dict(value, agent="future-client")))
+        self.assertEqual(self.call()["code"], "invalid_agent")
+        for bad in ("", "a", "Codex", "x" * 33, "has space", 5, None):
+            with self.subTest(agent=bad):
+                path.write_text(json.dumps(dict(value, agent=bad)))
+                self.assertEqual(self.call()["code"], "invalid_config")
 
     def test_malformed_backend_command_is_invalid_config(self):
         for value in ("agentbridge", [], [""], [str(self.root / "a"), "b", "c"], ["relative/path"]):
@@ -454,7 +493,7 @@ class BootstrapInstallerTests(unittest.TestCase):
                               env=self.env, capture_output=True, text=True, timeout=30)
 
     def handoff(self, agent):
-        return self.home / DIRECTORIES[agent] / "skills/handoff"
+        return client_root(agent, self.home) / "skills/handoff"
 
     def test_detect_clients_reports_only_present_directories(self):
         (self.home / ".workbuddy-ai").mkdir()
@@ -475,7 +514,7 @@ class BootstrapInstallerTests(unittest.TestCase):
     def test_bootstrap_without_any_client_reports_and_writes_nothing(self):
         result = self.run_installer()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("No Codex", result.stderr)
+        self.assertIn("No supported client", result.stderr)
         self.assertEqual(list(self.home.iterdir()), [])
 
     def test_bootstrap_preview_writes_nothing(self):

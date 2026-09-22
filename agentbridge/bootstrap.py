@@ -18,8 +18,8 @@ from .skill_install import CLIENTS, detect_clients, install_skills
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="agentbridge-install",
         description="Install the AgentBridge handoff skill for detected clients.")
-    parser.add_argument("--clients", help="Comma-separated subset of codex,claude,workbuddy. Default: auto-detect.")
-    parser.add_argument("--all", action="store_true", help="Install for all three clients even if their config directory is absent.")
+    parser.add_argument("--clients", help="Comma-separated subset of " + ",".join(CLIENTS) + ". Default: auto-detect.")
+    parser.add_argument("--all", action="store_true", help="Install for every supported client even if its config directory is absent.")
     parser.add_argument("--preview", action="store_true", help="List what would change without writing anything.")
     args = parser.parse_args(argv)
 
@@ -34,9 +34,10 @@ def main(argv=None):
     else:
         clients = detect_clients()
         if not clients:
-            print("No Codex, Claude Code, or WorkBuddy configuration directory was found under\n"
-                  "%s. Open the client once so it creates ~/.codex, ~/.claude, or ~/.workbuddy-ai,\n"
-                  "or re-run with --all or --clients <name>." % Path.home(), file=sys.stderr)
+            print("No supported client was found under %s.\n"
+                  "Open Codex, Claude Code, WorkBuddy or MiMoCode once so it creates its\n"
+                  "configuration directory, or re-run with --all or --clients <name>."
+                  % Path.home(), file=sys.stderr)
             return 1
 
     try:

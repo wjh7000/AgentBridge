@@ -21,7 +21,7 @@ from typing import Any
 MAX_FILES = 40
 MAX_FILE_LENGTH = 160
 
-AGENTS = frozenset(("codex", "claude", "workbuddy"))
+AGENTS = frozenset(("codex", "claude", "workbuddy", "mimocode"))
 
 _ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 _PRIVATE_KEY = re.compile(
@@ -74,7 +74,7 @@ def redact_summary(summary: str) -> str:
 
 def _agent(value: str) -> str:
     if not isinstance(value, str) or value not in AGENTS:
-        raise ValueError("agent must be codex, claude, or workbuddy")
+        raise ValueError("agent must be one of: " + ", ".join(sorted(AGENTS)))
     return value
 
 

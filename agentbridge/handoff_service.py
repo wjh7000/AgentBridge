@@ -314,7 +314,7 @@ def dispatch(action, cwd, agent, session=None, file=None, packet_id=None):
         try:
             agent = _agent(agent)
         except ValueError:
-            raise _ServiceError("invalid_agent", "Agent must be codex, claude, or workbuddy.")
+            raise _ServiceError("invalid_agent", "Agent must be a supported client identifier.")
         root, actual, established = _project(cwd)
         if action == "check":
             session_id = _session(agent, session, create=True)

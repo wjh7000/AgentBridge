@@ -2,7 +2,7 @@
 
 *[English](README.md) · 简体中文*
 
-在同一台机器上，把工作从一个 AI 编码助手正式交接给另一个：Codex、Claude Code、WorkBuddy 之间互通。**交接只在你打开的那个工作区目录内共享**，不同工作区互不可见。
+在同一台机器上，把工作从一个 AI 编码助手正式交接给另一个：Codex、Claude Code、WorkBuddy、MiMoCode 之间互通。**交接只在你打开的那个工作区目录内共享**，不同工作区互不可见。
 
 纯本地、只用 Python 标准库；无 API Key、无第三方服务、无常驻进程、不联网。保存和读取交接本身不调用任何模型。
 
@@ -13,38 +13,64 @@ A 会话（做完一段活）            B 会话（接着干）
   存进本工作区                    需要时再读完整详情
 ```
 
+## 支持的客户端
+
+| 客户端 | 技能目录 | 调用方式 |
+| --- | --- | --- |
+| Codex | `~/.codex/skills/handoff` | `$handoff …` |
+| Claude Code | `~/.claude/skills/handoff` | `/handoff …` |
+| WorkBuddy | `~/.workbuddy-ai/skills/handoff` | `/handoff …` |
+| MiMoCode | `~/.config/mimocode/skills/handoff` | `/handoff …` |
+
+只给**本机实际存在**的客户端安装。**没有「共享版/每客户端版」这种选择题** —— 安装器自己为每个探测到的客户端挑对目录。
+
 ## 安装
 
-需要 Python 3.9+。一条命令，**可以直接交给 agent 执行**：
+需要 Python 3.9+。无依赖、无虚拟环境、无 API Key。
+
+### 从克隆目录装
 
 ```bash
+git clone https://github.com/wjh7000/AgentBridge.git
+cd AgentBridge
 python3 install.py
 ```
 
-它会自动探测本机装了哪几个客户端（`~/.codex`、`~/.claude`、`~/.workbuddy-ai`），只给存在的安装，并逐个校验写入结果；冲突或写入失败会非零退出并报出真实原因。
-
-从 GitHub 拉取：
-
-```bash
-git clone https://github.com/wjh7000/AgentBridge.git && cd AgentBridge && python3 install.py
-```
-
-或作为标准 Python 包安装（不想留克隆目录时用这个）：
+### 作为 Python 包装
 
 ```bash
 pipx install git+https://github.com/wjh7000/AgentBridge.git   # 或 pip install git+…
 agentbridge-install
 ```
 
-打包安装后有两个命令：`agentbridge`（交接后端）和 `agentbridge-install`（等价于 `install.py`）。写入 skill 的配置指向已安装的 `agentbridge` 脚本绝对路径，**克隆目录删掉、换工作目录都仍然有效**。
+会得到两个命令:`agentbridge`(交接后端)和 `agentbridge-install`(等价于 `install.py`)。写入的 skill 记录的是 `agentbridge` 控制台脚本的绝对路径,**克隆目录删掉、换工作目录都仍然有效**。
 
-其他参数：`--preview` 只预览、`--clients codex,claude` 指定子集、`--all` 连尚未出现的客户端目录也装。
+### 交给 agent 装
 
-装完**刷新或重启客户端**，确认技能菜单里出现 `handoff`。
+[`AGENTS.md`](AGENTS.md) 就是写给 AI 编码 agent 看的。把仓库指给它、让它照 `AGENTS.md` 做即可 —— 里面写了跑什么命令、成功长什么样、每种失败是什么意思、以及**不许声称什么**。
+
+因为安装器会自校验写入结果、失败非零退出并报真实原因,agent **没法悄悄谎报一个没发生的成功**。
+
+### 参数
+
+| 参数 | 作用 |
+| --- | --- |
+| `--preview` | 只显示将改动什么,不写入 |
+| `--clients codex,claude` | 只装子集 |
+| `--all` | 连配置目录尚不存在的客户端也装 |
+
+### 正常输出
+
+```
+Installed codex     -> /Users/you/.codex/skills/handoff
+Installed claude    -> /Users/you/.claude/skills/handoff
+```
+
+然后**刷新或重启各客户端**,确认技能菜单里出现 `handoff`。安装成功只说明文件就位,**不代表客户端已经加载了它**。
 
 ## 用法
 
-| 操作 | Codex | Claude Code / WorkBuddy |
+| 操作 | Codex | Claude Code / WorkBuddy / MiMoCode |
 | --- | --- | --- |
 | 整理并保存交接 | `$handoff send` | `/handoff send` |
 | 接收并继续 | `$handoff receive` | `/handoff receive` |
@@ -55,7 +81,7 @@ agentbridge-install
 
 **再发一次会作废自己上一份。** 继续干了活之后重新 `send`，本对话之前**没被领走**的那份会自动作废，接手方拿到的就是最新版，而不是被要求在两份之间选。已经被领走的、以及别的对话发的，都不受影响。
 
-详细说明见 [交接 skill 使用说明](docs/handoff-skills.md)。
+详细说明见 [交接 skill 使用说明](docs/handoff-skills.md);交给 agent 安装见 [AGENTS.md](AGENTS.md)。
 
 ## 工作区边界
 
@@ -115,7 +141,7 @@ python3 agentbridge.py uninstall-skills    # 或 agentbridge uninstall-skills
 python3 -m unittest discover -s tests -v
 ```
 
-101 个测试，纯标准库，覆盖交接的保存/领取/并发/幂等、工作区隔离、回执严格校验、安装冲突保护与回滚。CI 在 Python 3.9–3.13 上运行测试并构建 wheel。
+104 个测试，纯标准库，覆盖交接的保存/领取/并发/幂等、工作区隔离、回执严格校验、安装冲突保护与回滚。CI 在 Python 3.9–3.13 上运行测试并构建 wheel。
 
 ## 已知边界
 

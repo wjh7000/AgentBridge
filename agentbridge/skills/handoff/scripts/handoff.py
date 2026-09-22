@@ -10,6 +10,7 @@ import sys
 
 _HEX32 = re.compile(r"[0-9a-f]{32}")
 _HEX32_JSON = re.compile(r"[0-9a-f]{32}\.json")
+_AGENT = re.compile(r"[a-z][a-z0-9-]{1,31}")
 
 
 def failure(code, message):
@@ -109,9 +110,12 @@ def run(argv=None):
         if not config_path.is_file():
             return failure("not_configured", "Skill backend is not configured. Stop; do not simulate handoff or auto-install.")
         config = json.loads(config_path.read_text(encoding="utf-8"))
+        # The caller identity is checked for shape only; which identifiers exist
+        # is the backend's business, so adding a client never edits this helper.
         if (not isinstance(config, dict) or config.get("protocol_version") != 2
                 or config.get("backend") != "agentbridge"
-                or config.get("agent") not in ("codex", "claude", "workbuddy")):
+                or not isinstance(config.get("agent"), str)
+                or _AGENT.fullmatch(config["agent"]) is None):
             return failure("invalid_config", "Skill backend configuration is invalid; stop.")
         backend = config.get("command")
         if (not isinstance(backend, list) or not (1 <= len(backend) <= 3)

@@ -1,11 +1,11 @@
 ---
 name: handoff
-description: Explicitly send, receive, or inspect a local AgentBridge handoff for the current project across Codex, Claude Code, and WorkBuddy.
+description: Explicitly send, receive, or inspect a local AgentBridge handoff for the current project across Codex, Claude Code, WorkBuddy and MiMoCode.
 ---
 
 # Handoff
 
-Use only when the user explicitly invokes this skill: `$handoff send|receive|list|check|help` in Codex, or `/handoff send|receive|list|check|help` in Claude Code and WorkBuddy. Run in the current conversation so the sender can use its visible context. Handoffs are shared within the project; do not ask for or add a destination assistant. Keep ordinary progress logging separate from structured handoffs.
+Use only when the user explicitly invokes this skill: `$handoff send|receive|list|check|help` in Codex, or `/handoff send|receive|list|check|help` in Claude Code, WorkBuddy and MiMoCode. Run in the current conversation so the sender can use its visible context. Handoffs are shared within the project; do not ask for or add a destination assistant. Keep ordinary progress logging separate from structured handoffs.
 
 Resolve [scripts/handoff.py](scripts/handoff.py) relative to this installed `SKILL.md`, then execute it with Python 3. Every call requires `--cwd` set to the **actual current task working directory**, not the skill folder or an inferred project. The installed helper configuration fixes the caller identity; never impersonate another assistant or modify that configuration.
 
@@ -32,7 +32,7 @@ Supported actions: `send`, `receive`, `list`, `check`, `help`. If no action was 
 
    When a list would exceed its limit, select by **what the receiver needs in order to continue**, not by recency or chronological order, and merge or drop the rest — noting in one entry that items were omitted. Constraints, blockers and `in_progress` outrank a complete history of what was done.
 3. Run `python3 <helper> send --cwd <actual-cwd> --session <session_id> --file <draft_path>`. Do not place the whole handoff in the final chat message. A draft path is issued to one conversation, so never send a draft that another conversation's check produced; `session_mismatch` means exactly that.
-4. Report “saved” only after an actual successful JSON response with `ok: true` and a packet ID. Show the ID and the receiver's native invocation: `$handoff receive` in Codex or `/handoff receive` in Claude Code/WorkBuddy, in the same project. Saving does not mean another assistant received or executed it. When `superseded` is a non-empty list, say that this send voided that many of **this conversation's own** earlier handoffs that nobody had claimed yet — sending again after further work replaces the stale one instead of leaving the receiver to choose. Handoffs already claimed by someone, and other conversations' handoffs, are never voided.
+4. Report “saved” only after an actual successful JSON response with `ok: true` and a packet ID. Show the ID and the receiver's native invocation: `$handoff receive` in Codex or `/handoff receive` in Claude Code, WorkBuddy or MiMoCode, in the same project. Saving does not mean another assistant received or executed it. When `superseded` is a non-empty list, say that this send voided that many of **this conversation's own** earlier handoffs that nobody had claimed yet — sending again after further work replaces the stale one instead of leaving the receiver to choose. Handoffs already claimed by someone, and other conversations' handoffs, are never voided.
 
    To send an updated handoff after more work in this same conversation, run `check` again for a fresh `draft_path` and send that. Reusing the previous draft path with changed content fails as `draft_changed`; reusing it unchanged returns the same packet ID.
 

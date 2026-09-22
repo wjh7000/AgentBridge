@@ -2,7 +2,7 @@
 
 *English · [简体中文](README.zh-CN.md)*
 
-Hand a task from one AI coding assistant to another on the same machine — between Codex, Claude Code and WorkBuddy. **A handoff is shared only inside the workspace directory you opened**; different workspaces never see each other's handoffs.
+Hand a task from one AI coding assistant to another on the same machine — between Codex, Claude Code, WorkBuddy and MiMoCode. **A handoff is shared only inside the workspace directory you opened**; different workspaces never see each other's handoffs.
 
 Local only, Python standard library only. No API key, no third-party service, no background daemon, no network access. Saving and reading a handoff never calls a model.
 
@@ -13,38 +13,74 @@ Session A (finishing something)        Session B (picking it up)
   stored in this workspace                opens full details only if needed
 ```
 
+## Supported clients
+
+| Client | Skill directory | Invocation |
+| --- | --- | --- |
+| Codex | `~/.codex/skills/handoff` | `$handoff …` |
+| Claude Code | `~/.claude/skills/handoff` | `/handoff …` |
+| WorkBuddy | `~/.workbuddy-ai/skills/handoff` | `/handoff …` |
+| MiMoCode | `~/.config/mimocode/skills/handoff` | `/handoff …` |
+
+Only the clients actually present on your machine are installed. There is no
+shared-versus-per-client choice to make: the installer picks the right
+directory for each client it finds.
+
 ## Install
 
-Requires Python 3.9+. One command — **safe to hand to an agent**:
+Requires Python 3.9 or newer. No dependencies, no virtualenv, no API key.
+
+### From a clone
 
 ```bash
+git clone https://github.com/wjh7000/AgentBridge.git
+cd AgentBridge
 python3 install.py
 ```
 
-It detects which clients exist on this machine (`~/.codex`, `~/.claude`, `~/.workbuddy-ai`), installs only for those, and verifies every file it writes. A name conflict or a failed write exits non-zero with the real reason.
-
-From GitHub:
+### As a package
 
 ```bash
-git clone https://github.com/wjh7000/AgentBridge.git && cd AgentBridge && python3 install.py
-```
-
-Or install it as a regular Python package, if you would rather not keep the clone:
-
-```bash
-pipx install git+https://github.com/wjh7000/AgentBridge.git   # or pip install git+…
+pipx install git+https://github.com/wjh7000/AgentBridge.git   # or: pip install git+…
 agentbridge-install
 ```
 
-That gives you two commands: `agentbridge` (the handoff backend) and `agentbridge-install` (same thing as `install.py`). The installed skill points at the absolute path of the `agentbridge` console script, so it **keeps working after the clone is deleted or you move to another directory**.
+This gives you `agentbridge` (the handoff backend) and `agentbridge-install`
+(the same installer as `install.py`). The installed skill records the absolute
+path of the `agentbridge` console script, so it **keeps working after the clone
+is deleted or you move to another directory**.
 
-Other flags: `--preview` to show changes without writing, `--clients codex,claude` for a subset, `--all` to include clients whose config directory does not exist yet.
+### Letting an agent do it
 
-After installing, **refresh or restart each client** and confirm `handoff` appears in its skill menu.
+[`AGENTS.md`](AGENTS.md) is written for an AI coding agent to follow. Point one
+at this repository and tell it to follow `AGENTS.md`; it covers what to run,
+what success looks like, what each failure means, and what it must not claim.
+
+Because the installer verifies its own writes and exits non-zero with the real
+reason, an agent cannot quietly report a success that did not happen.
+
+### Options
+
+| Flag | Effect |
+| --- | --- |
+| `--preview` | Show what would change; write nothing |
+| `--clients codex,claude` | Restrict to a subset |
+| `--all` | Include clients whose configuration directory does not exist yet |
+
+### Expected output
+
+```
+Installed codex     -> /Users/you/.codex/skills/handoff
+Installed claude    -> /Users/you/.claude/skills/handoff
+```
+
+Then **refresh or restart each client** and confirm `handoff` appears in its
+skill menu. A successful install means the files are in place; it does not
+prove a client has loaded them.
 
 ## Usage
 
-| Action | Codex | Claude Code / WorkBuddy |
+| Action | Codex | Claude Code / WorkBuddy / MiMoCode |
 | --- | --- | --- |
 | Write and save a handoff | `$handoff send` | `/handoff send` |
 | Pick one up and continue | `$handoff receive` | `/handoff receive` |
@@ -55,7 +91,7 @@ After installing, **refresh or restart each client** and confirm `handoff` appea
 
 **Sending again replaces your own pending handoff.** Do more work, run `send` again, and the earlier one from this same conversation is voided so the receiver gets the current version instead of a choice between two. Handoffs someone already claimed, and other conversations' handoffs, are never touched.
 
-See [the handoff skill reference](docs/handoff-skills.md) for details.
+See [the handoff skill reference](docs/handoff-skills.md) for details, and [AGENTS.md](AGENTS.md) for the agent-facing install instructions.
 
 ## The workspace boundary
 
@@ -115,7 +151,7 @@ Skill files you edited yourself are preserved and reported as skipped. Existing 
 python3 -m unittest discover -s tests -v
 ```
 
-101 tests, standard library only, covering save/claim/concurrency/idempotency, workspace isolation, strict receipt validation, and install conflict protection with rollback. CI runs the suite on Python 3.9–3.13 and builds the wheel.
+104 tests, standard library only, covering save/claim/concurrency/idempotency, workspace isolation, strict receipt validation, and install conflict protection with rollback. CI runs the suite on Python 3.9–3.13 and builds the wheel.
 
 ## Known limits
 

@@ -10,7 +10,7 @@
 | 检查接入 | `$handoff check` | `/handoff check` |
 | 查看用法 | `$handoff help` | `/handoff help` |
 
-先刷新或重启客户端，确认技能选择器中出现 `handoff`，再选择并填写操作。Codex 使用 `$` 的 skill 引用；不要假设 `/handoff` 是 Codex 内置命令。Claude Code/WorkBuddy 使用 slash skill。已有聊天能否即时刷新取决于客户端；没出现时先新建同项目会话或重启。
+先刷新或重启客户端，确认技能选择器中出现 `handoff`，再选择并填写操作。Codex 使用 `$` 的 skill 引用；不要假设 `/handoff` 是 Codex 内置命令。Claude Code、WorkBuddy、MiMoCode 使用 slash skill。已有聊天能否即时刷新取决于客户端；没出现时先新建同项目会话或重启。
 
 同一对话再次 `send`（需重新 `check` 拿新草稿）会**作废本对话之前未被领取的交接单**，接手方只看到最新版；已被领取的和别人发的不受影响。草稿路径是一次性令牌，只发给某一场对话：漏传 `--session` 时后端会据此恢复发送方身份，拿别的对话的草稿来发则报 `session_mismatch`。
 
@@ -32,11 +32,11 @@
 python3 install.py            # 预览：python3 install.py --preview
 ```
 
-也可直接调用底层命令（默认三个客户端、不做探测）：`python3 agentbridge.py install-skills`。`install.py` 支持 `--clients codex,claude` 指定子集、`--all` 连尚未出现的目录一并安装。适合交给 agent 执行：「在仓库目录运行 `python3 install.py` 并贴回输出」。
+也可直接调用底层命令（默认全部客户端、不做探测）：`python3 agentbridge.py install-skills`。`install.py` 支持 `--clients codex,claude` 指定子集、`--all` 连尚未出现的目录一并安装。适合交给 agent 执行：「在仓库目录运行 `python3 install.py` 并贴回输出」。
 
-本机使用的个人目录：Codex `~/.codex/skills/handoff`、Claude Code `~/.claude/skills/handoff`、WorkBuddy AI `~/.workbuddy-ai/skills/handoff`。每份配置固定当前工具身份，并指向本地 AgentBridge 后端，不需要在每个项目复制 skill。Codex 此目录由当前已安装客户端加载；最新官方文档也列出 `~/.agents/skills`，不要同时重复安装同名 skill。
+本机使用的个人目录：Codex `~/.codex/skills/handoff`、Claude Code `~/.claude/skills/handoff`、WorkBuddy AI `~/.workbuddy-ai/skills/handoff`、MiMoCode `~/.config/mimocode/skills/handoff`（它也接受 `~/.mimocode/skills`，安装器用已存在的那个）。每份配置固定当前工具身份，并指向本地 AgentBridge 后端，不需要在每个项目复制 skill。不要把同名 skill 重复装进同一个客户端会读的多个目录（例如同时装进 `~/.agents/skills`），否则会互相覆盖。
 
-Codex 的 `agents/openai.yaml` 设置 `allow_implicit_invocation: false`；安装器给 Claude Code/WorkBuddy 的 frontmatter 加上 `disable-model-invocation: true`，只允许用户主动调用。安装器拒绝覆盖不属于本工具的同名 skill，并保留用户改动。
+Codex 的 `agents/openai.yaml` 设置 `allow_implicit_invocation: false`；安装器只写入**该客户端明确支持**的 frontmatter：Claude Code/WorkBuddy 得到 `disable-model-invocation`、`user-invocable`、`argument-hint`，MiMoCode 只得到前两个（它未记载 `argument-hint`）。都是只允许用户主动调用。安装器拒绝覆盖不属于本工具的同名 skill，并保留用户改动。
 
 交接 skill **无需为每个工作区手动登记**：首次在某工作区调用时，自动在该目录建立 `.agentbridge/` 边界，回执带 `established: true` 并明确告知用户。边界就是当前工作目录本身，不向上并入父目录；不依赖 git，也不依赖任何生命周期 hooks。
 
@@ -50,6 +50,6 @@ Codex 的 `agents/openai.yaml` 设置 `allow_implicit_invocation: false`；安�
 
 ## 验证范围
 
-本地测试覆盖工作区边界的自动建立、结构化错误、协议不符拒绝、导出和领取、并发与幂等、工作区隔离、回执严格校验，以及安装冲突保护与回滚。原生入口依据 [OpenAI Skills](https://learn.chatgpt.com/docs/build-skills)、[Claude Code Skills](https://code.claude.com/docs/en/skills#control-who-invokes-a-skill)、[CodeBuddy Skills](https://www.codebuddy.ai/docs/cli/skills)，WorkBuddy 目录还核对了本机 5.5.2 的启动环境和技能解析代码。完整的三个客户端聊天验收尚未完成；安装成功不等于已证明每个现有聊天都加载了 skill。
+本地测试覆盖工作区边界的自动建立、结构化错误、协议不符拒绝、导出和领取、并发与幂等、工作区隔离、回执严格校验，以及安装冲突保护与回滚。原生入口依据 [OpenAI Skills](https://learn.chatgpt.com/docs/build-skills)、[Claude Code Skills](https://code.claude.com/docs/en/skills#control-who-invokes-a-skill)、[CodeBuddy Skills](https://www.codebuddy.ai/docs/cli/skills)，WorkBuddy 目录还核对了本机 5.5.2 的启动环境和技能解析代码。各客户端原生聊天里的完整验收尚未完成；安装成功不等于已证明每个现有聊天都加载了 skill。
 
 移除个人技能：`python3 agentbridge.py uninstall-skills`。用户修改过的技能会保留并列出；已有交接数据不会随技能卸载删除。

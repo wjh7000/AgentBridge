@@ -8,11 +8,39 @@ import sys
 import tempfile
 
 
-CLIENTS = ("codex", "claude", "workbuddy")
+CLIENTS = ("codex", "claude", "workbuddy", "mimocode")
 RUNNER = Path(__file__).resolve().parents[1] / "agentbridge.py"
 SOURCE = Path(__file__).resolve().parent / "skills/handoff"
 MANIFEST = ".agentbridge-skill.json"
-DIRECTORIES = {"codex": ".codex", "claude": ".claude", "workbuddy": ".workbuddy-ai"}
+# Each client's personal skill root, as candidate paths relative to home. A
+# client that documents more than one (MiMoCode) is installed into whichever
+# candidate already exists, falling back to the first.
+DIRECTORIES = {"codex": (".codex",), "claude": (".claude",), "workbuddy": (".workbuddy-ai",),
+               "mimocode": (".config/mimocode", ".mimocode")}
+
+# Frontmatter each client is known to honour. Codex is steered by
+# agents/openai.yaml instead, and keys a client does not document are left out
+# rather than assumed to be ignored.
+FRONTMATTER = {
+    "claude": ("disable-model-invocation: true", "user-invocable: true",
+               'argument-hint: "send | receive [ID] | list | check"'),
+    "workbuddy": ("disable-model-invocation: true", "user-invocable: true",
+                  'argument-hint: "send | receive [ID] | list | check"'),
+    "mimocode": ("disable-model-invocation: true", "user-invocable: true"),
+}
+
+# Clients that expand a native per-conversation id into the skill body. Others
+# fall back to reusing the id that check returned, backed by the draft token.
+SESSION_VARIABLE = {"claude": "CLAUDE_SESSION_ID", "workbuddy": "CODEBUDDY_SESSION_ID"}
+
+
+def client_root(agent, home):
+    """The directory this client's skill is installed into."""
+    candidates = [home / name for name in DIRECTORIES[agent]]
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate
+    return candidates[0]
 
 
 def _write(path, content):
@@ -68,12 +96,13 @@ def backend_argv():
 def detect_clients(home=None):
     """Which of the supported clients have a configuration directory present.
 
-    Presence of ``~/.codex``/``~/.claude``/``~/.workbuddy-ai`` means the client
-    has run on this machine, so installing its skill is meaningful. Absent ones
-    are skipped rather than creating empty client trees.
+    A present configuration directory means the client has run on this machine,
+    so installing its skill is meaningful. Absent ones are skipped rather than
+    creating empty client trees.
     """
     home = Path.home() if home is None else Path(home).resolve()
-    return tuple(agent for agent in CLIENTS if (home / DIRECTORIES[agent]).is_dir())
+    return tuple(agent for agent in CLIENTS
+                 if any((home / name).is_dir() for name in DIRECTORIES[agent]))
 
 
 def _digest(content):
@@ -108,14 +137,17 @@ def _manifest(destination):
 
 def _files(agent):
     files = {name: (SOURCE / name).read_bytes() for name in ("SKILL.md", "agents/openai.yaml", "scripts/handoff.py")}
-    if agent != "codex":
+    keys = FRONTMATTER.get(agent, ())
+    variable = SESSION_VARIABLE.get(agent)
+    if keys or variable:
         text = files["SKILL.md"].decode("utf-8")
         if not text.startswith("---\n"):
             raise ValueError("Invalid skill frontmatter")
-        text = text.replace("---\n", "---\ndisable-model-invocation: true\nuser-invocable: true\nargument-hint: \"send | receive [ID] | list | check\"\n", 1)
-        variable = "CLAUDE_SESSION_ID" if agent == "claude" else "CODEBUDDY_SESSION_ID"
-        identity = "\nNative session for this invocation: `${" + variable + "}`. If expanded to a concrete ID, pass that exact ID as `--session` on check and all actions; it takes precedence over a remembered identity. If still an unexpanded placeholder, use the verified conversation identity procedure below, never the literal placeholder.\n"
-        text = text.replace("# Handoff\n", "# Handoff\n" + identity, 1)
+        if keys:
+            text = text.replace("---\n", "---\n" + "".join(key + "\n" for key in keys), 1)
+        if variable:
+            identity = "\nNative session for this invocation: `${" + variable + "}`. If expanded to a concrete ID, pass that exact ID as `--session` on check and all actions; it takes precedence over a remembered identity. If still an unexpanded placeholder, use the verified conversation identity procedure below, never the literal placeholder.\n"
+            text = text.replace("# Handoff\n", "# Handoff\n" + identity, 1)
         files["SKILL.md"] = text.encode("utf-8")
     files["bridge.json"] = (json.dumps({"backend": "agentbridge", "protocol_version": 2,
         "agent": agent, "command": backend_argv()}, indent=2) + "\n").encode("utf-8")
@@ -126,10 +158,10 @@ def install_skills(clients=CLIENTS, home=None, preview=False):
     home = Path.home() if home is None else Path(home).resolve()
     clients = tuple(dict.fromkeys(clients))
     if not clients or any(c not in CLIENTS for c in clients):
-        raise ValueError("clients must be codex,claude,workbuddy")
+        raise ValueError("clients must be " + ",".join(CLIENTS))
     plans = []
     for agent in clients:
-        destination = home / DIRECTORIES[agent] / "skills/handoff"
+        destination = client_root(agent, home) / "skills/handoff"
         previous = _manifest(destination)
         files = _files(agent)
         for name in files:
@@ -172,10 +204,10 @@ def uninstall_skills(clients=CLIENTS, home=None):
     home = Path.home() if home is None else Path(home).resolve()
     clients = tuple(dict.fromkeys(clients))
     if not clients or any(c not in CLIENTS for c in clients):
-        raise ValueError("clients must be codex,claude,workbuddy")
+        raise ValueError("clients must be " + ",".join(CLIENTS))
     removed, skipped = [], []
     for agent in clients:
-        destination = home / DIRECTORIES[agent] / "skills/handoff"
+        destination = client_root(agent, home) / "skills/handoff"
         if not destination.exists():
             continue
         try:

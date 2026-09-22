@@ -11,14 +11,16 @@ def main(argv=None):
     parser.add_argument("--version", action="version", version=__version__)
     sub = parser.add_subparsers(dest="command", required=True)
     for name in ("install-skills", "uninstall-skills"):
-        skill = sub.add_parser(name, help="安装/移除三个客户端的显式 handoff skill")
+        skill = sub.add_parser(name, help="安装/移除各客户端的显式 handoff skill")
         skill.add_argument("--clients", default=",".join(CLIENTS))
         if name == "install-skills":
             skill.add_argument("--preview", action="store_true")
     handoff = sub.add_parser("handoff", help="供正式 skill 调用的交接后端；返回 JSON 回执")
     handoff.add_argument("action", choices=("check", "send", "receive", "list", "help"))
     handoff.add_argument("--cwd", required=True)
-    handoff.add_argument("--agent", choices=CLIENTS, required=True)
+    # Validated by the service so an unknown client yields a structured
+    # protocol error instead of an argparse crash with no JSON receipt.
+    handoff.add_argument("--agent", required=True)
     handoff.add_argument("--session")
     handoff.add_argument("--file")
     handoff.add_argument("--id", dest="packet_id")
