@@ -272,7 +272,7 @@ class Handoffs:
             )
             return packet
 
-    def supersede_previous(self, source: str, session_id: str, keep_id: str) -> list:
+    def supersede_previous(self, session_id: str, keep_id: str) -> list:
         """Void this conversation's earlier handoffs that nobody has claimed.
 
         Sending again after more work should replace the stale packet rather
@@ -280,13 +280,12 @@ class Handoffs:
         handoff someone already claimed is never voided: that session may
         already be acting on it.
         """
-        source = _agent(source)
         session_id = _identifier(session_id, "session_id")
         rows = self.connection.execute(
-            """SELECT id FROM handoff_packets WHERE namespace = ? AND source = ?
+            """SELECT id FROM handoff_packets WHERE namespace = ?
             AND source_session = ? AND id != ? AND received_session IS NULL
             AND superseded_by IS NULL""",
-            (self.namespace, source, session_id, keep_id),
+            (self.namespace, session_id, keep_id),
         ).fetchall()
         superseded = [row["id"] for row in rows]
         if superseded:
@@ -312,8 +311,8 @@ class Handoffs:
             if packet_id is not None:
                 row = self.connection.execute(
                     """SELECT * FROM handoff_packets WHERE namespace = ? AND target IN (?, 'any') AND id = ?
-                    AND superseded_by IS NULL AND NOT (source = ? AND source_session = ?)""",
-                    (self.namespace, target, packet_id, target, session_id),
+                    AND superseded_by IS NULL AND source_session != ?""",
+                    (self.namespace, target, packet_id, session_id),
                 ).fetchone()
                 if row is None or (row["received_session"] is not None and
                                    (row["received_session"] != session_id or row["received_agent"] != target)):
@@ -324,9 +323,9 @@ class Handoffs:
                 rows = self.connection.execute(
                     """SELECT * FROM handoff_packets WHERE namespace = ? AND target IN (?, 'any')
                     AND received_session IS NULL AND superseded_by IS NULL
-                    AND NOT (source = ? AND source_session = ?)
+                    AND source_session != ?
                     ORDER BY created_at, id""",
-                    (self.namespace, target, target, session_id),
+                    (self.namespace, target, session_id),
                 ).fetchall()
                 if not rows:
                     # Distinguish "nothing here" from "the only one is yours",
@@ -334,8 +333,8 @@ class Handoffs:
                     own = self.connection.execute(
                         """SELECT 1 FROM handoff_packets WHERE namespace = ? AND target IN (?, 'any')
                         AND received_session IS NULL AND superseded_by IS NULL
-                        AND source = ? AND source_session = ? LIMIT 1""",
-                        (self.namespace, target, target, session_id),
+                        AND source_session = ? LIMIT 1""",
+                        (self.namespace, target, session_id),
                     ).fetchone()
                     return {"status": "empty", "only_own": own is not None}
                 if len(rows) > 1:

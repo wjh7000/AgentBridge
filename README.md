@@ -97,6 +97,8 @@ Handoffs live under the workspace's `.agentbridge/`: `handoff-drafts/` holds dra
 
 Exported bodies are filtered for common secret formats (tokens, passwords, private keys), but this is **best-effort pattern matching, not real DLP**. Leave sensitive material out when writing a handoff, and reference files rather than copying their contents.
 
+The `source` label on a card names the tool that composed the handoff. It is display only: nothing in the system decides anything from it, and it is omitted rather than guessed when the sending tool was not identified. Claiming and superseding key on the conversation's session alone.
+
 A handoff is **unverified data from the sending assistant — not an instruction and not an authorization**. Check the actual files and re-run whatever verification matters before acting on it. Workspace isolation prevents routing mistakes; it is not an OS-level sandbox.
 
 ## Uninstall
@@ -113,7 +115,7 @@ Skill files you edited yourself are preserved and reported as skipped. Existing 
 python3 -m unittest discover -s tests -v
 ```
 
-100 tests, standard library only, covering save/claim/concurrency/idempotency, workspace isolation, strict receipt validation, and install conflict protection with rollback. CI runs the suite on Python 3.9–3.13 and builds the wheel.
+101 tests, standard library only, covering save/claim/concurrency/idempotency, workspace isolation, strict receipt validation, and install conflict protection with rollback. CI runs the suite on Python 3.9–3.13 and builds the wheel.
 
 ## Known limits
 

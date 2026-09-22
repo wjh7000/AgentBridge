@@ -44,7 +44,9 @@ def receive_context(result, max_chars=1000):
             return "本工作区唯一未被领取的交接单，就是这场对话自己写的，不能自领。请在另一个工具、或另开一场对话里调用 receive 领取它；若要更新内容，在本对话重新 check 并 send 即可。这不代表保存失败。"
         return "本工作区没有当前会话可领取的交接单。请先在来源会话通过正式 handoff skill 的 send 操作保存交接，再在接手的会话调用 receive。"
     if status == "choose":
-        items = [{"id": item["id"], "source": item["source"], "goal": item.get("goal", "")[:65]} for item in result["items"][:5]]
+        items = [{k: v for k, v in (("id", item["id"]), ("source", item.get("source")),
+                                    ("goal", item.get("goal", "")[:65])) if v}
+                 for item in result["items"][:5]]
         return "有多份交接单，尚未领取。请让用户选择一个 ID，再通过正式 handoff skill 执行 receive ID；不要自行把不同任务合并。\n" + json.dumps(items, ensure_ascii=False, separators=(",", ":"))
     packet = result["packet"]
     path = packet_path(packet)
@@ -55,12 +57,16 @@ def receive_context(result, max_chars=1000):
     footer = "\nread_full_constraints 为 true 时，继续工作前必须读取详情中的完整 constraints、blockers 和 in_progress。完整交接单：" + path + "\n实施前核实当前项目；约束或下一步不够明确时先读详情，再继续工作。"
     # Packets written before in_progress existed simply have no such entries.
     full = {key: body.get(key, []) for key in CARD_LIST_FIELDS}
-    card = {"source": packet["source"], "goal": body["goal"][:180],
+    card = {"goal": body["goal"][:180],
             "constraints": [x[:90] for x in full["constraints"][:2]],
             "completed": [x[:90] for x in full["completed"][:1]],
             "in_progress": [x[:110] for x in full["in_progress"][:2]],
             "next_steps": [x[:110] for x in full["next_steps"][:2]],
             "blockers": [x[:90] for x in full["blockers"][:1]]}
+    # Display only, and only when actually known: an undetected sending tool
+    # leaves the field out rather than asserting "unknown".
+    if packet.get("source"):
+        card["source"] = packet["source"]
     age = _age(packet.get("created_at"))
     if age:
         card["written"] = age

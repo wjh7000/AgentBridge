@@ -301,7 +301,7 @@ def _save(root, source, session_id, body, draft_name):
                 VALUES (?, ?, ?, ?, ?, ?)""",
                 (store.namespace, source, session_id, draft_name, fingerprint, packet["id"]),
             )
-            return packet, handoffs.supersede_previous(source, session_id, packet["id"])
+            return packet, handoffs.supersede_previous(session_id, packet["id"])
 
 
 def dispatch(action, cwd, agent, session=None, file=None, packet_id=None):

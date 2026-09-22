@@ -185,6 +185,21 @@ class HandoffTests(unittest.TestCase):
         self.assertEqual(statuses.count("empty"), 3)
         results.close()
 
+    def test_source_label_never_decides_anything(self):
+        # source is display only. Both guarantees key on the session alone, so a
+        # different (or drifting) tool label must not weaken either of them.
+        self.handoffs.begin("claude", "same-session")
+        first = self.handoffs.complete("claude", "same-session", _body())
+        # Self-claim protection holds even though the label differs.
+        self.assertEqual(self.handoffs.receive("codex", "same-session"),
+                         {"status": "empty", "only_own": True})
+        # Superseding this conversation's own pending handoff holds too.
+        self.handoffs.begin("workbuddy", "same-session")
+        second = self.handoffs.complete("workbuddy", "same-session", _body("Newer goal"))
+        self.assertEqual(self.handoffs.supersede_previous("same-session", second["id"]), [first["id"]])
+        claimed = self.handoffs.receive("codex", "other-session")
+        self.assertEqual(claimed["packet"]["id"], second["id"])
+
     def test_shared_packet_allows_any_other_session_but_not_source_session(self):
         intent = self.handoffs.begin("claude", "source")
         self.assertEqual(intent["target"], "any")
