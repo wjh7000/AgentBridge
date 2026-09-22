@@ -1,14 +1,68 @@
 """Install explicit-only personal skills without replacing unrelated skills."""
 import hashlib
 import json
+import os
 from pathlib import Path
+import shutil
+import sys
+import tempfile
 
-from .integrations import CLIENTS, backend_argv, _write
 
-
+CLIENTS = ("codex", "claude", "workbuddy")
+RUNNER = Path(__file__).resolve().parents[1] / "agentbridge.py"
 SOURCE = Path(__file__).resolve().parent / "skills/handoff"
 MANIFEST = ".agentbridge-skill.json"
 DIRECTORIES = {"codex": ".codex", "claude": ".claude", "workbuddy": ".workbuddy-ai"}
+
+
+def _write(path, content):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(prefix=".agentbridge-", dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(content)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def _installed_console():
+    """The ``agentbridge`` console script in this package's own environment.
+
+    Located from the package directory rather than ``sys.executable`` or PATH,
+    so it stays correct even where the interpreter reports a different prefix
+    (e.g. some conda-created virtualenvs). Its shebang embeds the right Python.
+    """
+    package = Path(__file__).resolve()
+    for parent in package.parents:
+        for bindir in ("bin", "Scripts"):
+            for name in ("agentbridge", "agentbridge.exe"):
+                candidate = parent / bindir / name
+                if candidate.is_file():
+                    return candidate
+    return None
+
+
+def backend_argv():
+    """The portable command prefix that runs this backend from anywhere.
+
+    Each form is independent of the caller's later working directory and keeps
+    working after the launching process exits:
+
+    * ``[console]`` — the installed ``agentbridge`` script (preferred).
+    * ``[python, agentbridge.py]`` — running from a plain clone.
+    * ``[python, "-m", "agentbridge"]`` — installed with no locatable script.
+    """
+    console = _installed_console()
+    if console:
+        return [str(console.resolve())]
+    if RUNNER.is_file():
+        return [str(Path(sys.executable).resolve()), str(RUNNER)]
+    found = shutil.which("agentbridge")
+    if found:
+        return [str(Path(found).resolve())]
+    return [str(Path(sys.executable).resolve()), "-m", "agentbridge"]
 
 
 def detect_clients(home=None):

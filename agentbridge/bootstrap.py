@@ -12,8 +12,7 @@ import json
 from pathlib import Path
 import sys
 
-from .integrations import CLIENTS
-from .skill_install import detect_clients, install_skills
+from .skill_install import CLIENTS, detect_clients, install_skills
 
 
 def main(argv=None):

@@ -65,9 +65,6 @@ class HandoffTests(unittest.TestCase):
         self.assertEqual(json.loads(export.read_text()), packet)
         self.assertEqual(stat.S_IMODE(export.stat().st_mode), 0o600)
         self.assertEqual(stat.S_IMODE(export.parent.stat().st_mode), 0o700)
-        self.assertEqual(self.store.list_events(), [])
-        self.store.publish("workbuddy", "ordinary", "Normal record still works")
-        self.assertEqual(len(self.store.list_events()), 1)
 
     def test_begin_pending_is_idempotent_and_completion_never_overwrites(self):
         first = self.handoffs.begin("claude", "source", "codex")

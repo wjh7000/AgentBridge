@@ -8,8 +8,8 @@ import unittest
 from unittest.mock import patch
 
 from agentbridge import skill_install
-from agentbridge.integrations import CLIENTS, install
-from agentbridge.skill_install import DIRECTORIES, MANIFEST, install_skills, uninstall_skills
+
+from agentbridge.skill_install import CLIENTS, DIRECTORIES, MANIFEST, install_skills, uninstall_skills
 
 
 class TemporarySkillCase(unittest.TestCase):
@@ -132,7 +132,7 @@ class SkillInstallationTests(TemporarySkillCase):
         self.assertEqual(list(self.home.iterdir()), [])
 
     def test_backend_argv_matches_the_helpers_accepted_shapes(self):
-        from agentbridge.integrations import backend_argv
+        from agentbridge.skill_install import backend_argv
         argv = backend_argv()
         self.assertIn(len(argv), (1, 2, 3))
         if len(argv) == 3:
@@ -387,7 +387,6 @@ class SkillAdapterTests(TemporarySkillCase):
                 self.assertTrue(self.call(action)["ok"], payload)
 
     def test_temporary_project_handoff_crosses_installed_client_adapters(self):
-        install(self.cwd, clients=("claude",))
         body = {"goal": "Finish the parser integration", "constraints": ["Keep compatibility"],
                 "completed": ["Wrote the parser"], "decisions": ["Use JSON"], "findings": [],
                 "files": ["parser.py"], "verification": ["Integration not run"],
@@ -420,7 +419,6 @@ class SkillAdapterTests(TemporarySkillCase):
         self.assertEqual(empty["status"], "empty")
 
     def test_reusing_workbuddy_session_across_invocations_keeps_ownership(self):
-        install(self.cwd, clients=("workbuddy",))
         body = {"goal": "Continue the current project", "constraints": [], "completed": [],
                 "decisions": [], "findings": [], "files": [], "verification": [],
                 "next_steps": ["Inspect the remaining work"], "blockers": []}
