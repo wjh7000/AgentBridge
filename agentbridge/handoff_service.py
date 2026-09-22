@@ -212,7 +212,57 @@ def _backend(store):
             PRIMARY KEY(namespace, source, session_id, draft_name)
         )"""
     )
+    # check issues each draft name to exactly one conversation, so the draft
+    # itself is a one-time token that recovers the sender's identity even when
+    # the caller forgets to pass --session back.
+    store._connection.execute(
+        """CREATE TABLE IF NOT EXISTS handoff_draft_sessions (
+            namespace TEXT NOT NULL,
+            agent TEXT NOT NULL,
+            draft_name TEXT NOT NULL,
+            session_id TEXT NOT NULL,
+            PRIMARY KEY(namespace, agent, draft_name)
+        )"""
+    )
     return handoffs
+
+
+def _remember_draft(root, agent, draft_name, session_id):
+    with Store(root) as store:
+        _backend(store)
+        store._connection.execute(
+            """INSERT INTO handoff_draft_sessions(namespace, agent, draft_name, session_id)
+            VALUES (?, ?, ?, ?) ON CONFLICT(namespace, agent, draft_name) DO NOTHING""",
+            (store.namespace, agent, draft_name, session_id),
+        )
+
+
+def _send_session(root, agent, requested, draft_name):
+    """Resolve the sender identity, preferring the draft's issuing conversation.
+
+    A draft path is handed out by one check, so the session recorded with it is
+    authoritative. A caller that supplies a different session is using another
+    conversation's draft, which is an error rather than something to paper over.
+    """
+    try:
+        resolved = _session(agent, requested)
+    except _ServiceError:
+        resolved = None
+    with Store(root) as store:
+        _backend(store)
+        row = store._connection.execute(
+            """SELECT session_id FROM handoff_draft_sessions
+            WHERE namespace = ? AND agent = ? AND draft_name = ?""",
+            (store.namespace, agent, draft_name),
+        ).fetchone()
+    recorded = row["session_id"] if row else None
+    if recorded is None:
+        if resolved is None:
+            raise _ServiceError("session_required", "Run check and reuse its session_id for send, or supply the client session ID.")
+        return resolved
+    if resolved is not None and resolved != recorded:
+        raise _ServiceError("session_mismatch", "This draft was issued to a different conversation. Run check in this conversation and send its own draft_path.")
+    return recorded
 
 
 def _save(root, source, session_id, body, draft_name):
@@ -238,7 +288,7 @@ def _save(root, source, session_id, body, draft_name):
                 ).fetchone()
                 if row is None:
                     raise _ServiceError("backend_error", "Saved draft receipt has no packet; repair the local backend before retrying.")
-                return json.loads(row["packet_json"])
+                return json.loads(row["packet_json"]), []
             handoffs.begin(source, session_id)
             try:
                 packet = handoffs.complete(source, session_id, body)
@@ -251,7 +301,7 @@ def _save(root, source, session_id, body, draft_name):
                 VALUES (?, ?, ?, ?, ?, ?)""",
                 (store.namespace, source, session_id, draft_name, fingerprint, packet["id"]),
             )
-            return packet
+            return packet, handoffs.supersede_previous(source, session_id, packet["id"])
 
 
 def dispatch(action, cwd, agent, session=None, file=None, packet_id=None):
@@ -272,19 +322,23 @@ def dispatch(action, cwd, agent, session=None, file=None, packet_id=None):
                 _backend(store)
             with _draft_directory(root, create=True):
                 pass
-            path = root / ".agentbridge/handoff-drafts" / (uuid.uuid4().hex + ".json")
+            name = uuid.uuid4().hex + ".json"
+            _remember_draft(root, agent, name, session_id)
+            path = root / ".agentbridge/handoff-drafts" / name
             return _result(True, status="ready", project=str(root), session_id=session_id,
                            draft_path=str(path), established=established)
         if action == "list":
             with Store(root) as store:
                 items = Handoffs(store).list_packets(target=agent, limit=10)
             return _result(True, status="listed", project=str(root), items=items, established=established)
-        session_id = _session(agent, session)
         if action == "send":
             body, draft_name = _read_draft(root, actual, file)
-            packet = _save(root, agent, session_id, body, draft_name)
+            session_id = _send_session(root, agent, session, draft_name)
+            packet, superseded = _save(root, agent, session_id, body, draft_name)
             return _result(True, status="saved", state="saved", project=str(root), session_id=session_id,
-                           packet_id=packet["id"], details_path=packet_path(packet), established=established)
+                           packet_id=packet["id"], details_path=packet_path(packet),
+                           superseded=superseded, established=established)
+        session_id = _session(agent, session)
         with Store(root) as store:
             try:
                 result = Handoffs(store).receive(agent, session_id, packet_id)

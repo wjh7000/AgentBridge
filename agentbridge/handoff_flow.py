@@ -40,7 +40,9 @@ def _age(created_at, now=None):
 def receive_context(result, max_chars=1000):
     status = result["status"]
     if status == "empty":
-        return "本项目没有当前会话可领取的交接单。请先在来源会话通过正式 handoff skill 的 send 操作保存交接，再在接手的会话调用 receive。不要把普通进展日志当成交接单。"
+        if result.get("only_own"):
+            return "本工作区唯一未被领取的交接单，就是这场对话自己写的，不能自领。请在另一个工具、或另开一场对话里调用 receive 领取它；若要更新内容，在本对话重新 check 并 send 即可。这不代表保存失败。"
+        return "本工作区没有当前会话可领取的交接单。请先在来源会话通过正式 handoff skill 的 send 操作保存交接，再在接手的会话调用 receive。"
     if status == "choose":
         items = [{"id": item["id"], "source": item["source"], "goal": item.get("goal", "")[:65]} for item in result["items"][:5]]
         return "有多份交接单，尚未领取。请让用户选择一个 ID，再通过正式 handoff skill 执行 receive ID；不要自行把不同任务合并。\n" + json.dumps(items, ensure_ascii=False, separators=(",", ":"))

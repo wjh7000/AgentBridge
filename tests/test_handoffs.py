@@ -85,7 +85,7 @@ class HandoffTests(unittest.TestCase):
         self.assertNotEqual(first["id"], second["id"])
         packet = self.handoffs.complete("claude", "source", _body())
         self.assertEqual(packet["target"], "workbuddy")
-        self.assertEqual(self.handoffs.receive("codex", "session"), {"status": "empty"})
+        self.assertEqual(self.handoffs.receive("codex", "session"), {"status": "empty", "only_own": False})
 
     def test_cancel_and_failed_intents(self):
         self.handoffs.cancel("claude", "missing")
@@ -108,8 +108,8 @@ class HandoffTests(unittest.TestCase):
     def test_single_receive_once_and_explicit_same_session_reread(self):
         packet = self._complete()
         self.assertEqual(self.handoffs.receive("codex", "receiver"), {"status": "received", "packet": packet})
-        self.assertEqual(self.handoffs.receive("codex", "receiver"), {"status": "empty"})
-        self.assertEqual(self.handoffs.receive("codex", "receiver-2"), {"status": "empty"})
+        self.assertEqual(self.handoffs.receive("codex", "receiver"), {"status": "empty", "only_own": False})
+        self.assertEqual(self.handoffs.receive("codex", "receiver-2"), {"status": "empty", "only_own": False})
         self.assertEqual(self.handoffs.receive("codex", "receiver-2", packet["id"]), {"status": "empty"})
         self.assertEqual(self.handoffs.receive("codex", "receiver", packet["id"]),
                          {"status": "already_received", "packet": packet})
@@ -189,7 +189,7 @@ class HandoffTests(unittest.TestCase):
         intent = self.handoffs.begin("claude", "source")
         self.assertEqual(intent["target"], "any")
         packet = self.handoffs.complete("claude", "source", _body())
-        self.assertEqual(self.handoffs.receive("claude", "source"), {"status": "empty"})
+        self.assertEqual(self.handoffs.receive("claude", "source"), {"status": "empty", "only_own": True})
         self.assertEqual(self.handoffs.receive("claude", "source", packet["id"]), {"status": "empty"})
         self.assertEqual(self.handoffs.receive("claude", "new-session")["packet"], packet)
         self.assertEqual(self.handoffs.receive("codex", "new-session", packet["id"]), {"status": "empty"})

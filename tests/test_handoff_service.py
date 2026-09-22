@@ -319,20 +319,61 @@ class HandoffServiceTests(unittest.TestCase):
             self.assertEqual(self._call("check", agent="claude")["session_id"], "claude-env")
             self.assertEqual(self._call("check", session="explicit")["session_id"], "explicit")
             self.assertTrue(self._call("check", agent="workbuddy")["session_id"].startswith("skill-session-"))
-        for action in ("send", "receive"):
-            result = self._call(action)
-            self._assert_protocol(result, False)
-            self.assertEqual(result["code"], "session_required")
+        result = self._call("receive")
+        self._assert_protocol(result, False)
+        self.assertEqual(result["code"], "session_required")
         for session in ("", "a\nb", "a\tb", "\x00", "x" * 257, [], 9):
             result = self._call("check", session=session)
             self._assert_protocol(result, False)
             self.assertEqual(result["code"], "invalid_session")
         self._assert_protocol(self._call("list"))
 
+    def test_send_recovers_the_session_from_its_draft(self):
+        # The draft is a one-time token, so forgetting --session is not fatal.
+        saved = self._call("send", file=self._prepare(session="issued-to-me"))
+        self._assert_protocol(saved)
+        self.assertEqual(saved["session_id"], "issued-to-me")
+        own = self._call("receive", session="issued-to-me")
+        self.assertEqual(own["status"], "empty")
+        self.assertIn("不能自领", own["context"])
+
+    def test_send_refuses_a_draft_issued_to_another_conversation(self):
+        result = self._call("send", session="intruder", file=self._prepare(session="owner"))
+        self._assert_protocol(result, False)
+        self.assertEqual(result["code"], "session_mismatch")
+
+    def test_sending_again_supersedes_this_conversations_unclaimed_handoff(self):
+        first = self._call("send", session="s1", file=self._prepare(session="s1"))
+        second = self._call("send", session="s1", file=self._prepare(session="s1"))
+        self.assertEqual(second["superseded"], [first["packet_id"]])
+        received = self._call("receive", agent="codex", session="r")
+        self.assertEqual(received["status"], "received")
+        self.assertEqual(received["packet_id"], second["packet_id"])
+        voided = self._call("receive", agent="codex", session="r2", packet_id=first["packet_id"])
+        self.assertEqual(voided["status"], "empty")
+
+    def test_supersede_spares_claimed_handoffs_and_other_conversations(self):
+        first = self._call("send", session="s1", file=self._prepare(session="s1"))
+        claimed = self._call("receive", agent="codex", session="r", packet_id=first["packet_id"])
+        self.assertEqual(claimed["status"], "received")
+        second = self._call("send", session="s1", file=self._prepare(session="s1"))
+        self.assertEqual(second["superseded"], [])
+        other = self._call("send", session="s2", file=self._prepare(session="s2"))
+        self.assertEqual(other["superseded"], [])
+        listed = {item["id"]: item["status"] for item in self._call("list", agent="codex")["items"]}
+        self.assertEqual(listed[first["packet_id"]], "received")
+        self.assertEqual(listed[second["packet_id"]], "ready")
+
+    def test_idempotent_resend_supersedes_nothing(self):
+        draft = self._prepare(session="s1")
+        first = self._call("send", session="s1", file=draft)
+        again = self._call("send", session="s1", file=draft)
+        self.assertEqual(again["packet_id"], first["packet_id"])
+        self.assertEqual(again["superseded"], [])
+
     def test_multiple_packets_require_choice_without_returning_full_body(self):
-        draft = self._prepare()
-        first = self._call("send", session="first", file=draft)
-        second = self._call("send", session="second", file=draft)
+        first = self._call("send", session="first", file=self._prepare(session="first"))
+        second = self._call("send", session="second", file=self._prepare(session="second"))
         result = self._call("receive", agent="workbuddy", session="receiver")
         self._assert_protocol(result)
         self.assertEqual(result["status"], "choose")

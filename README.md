@@ -51,7 +51,9 @@ After installing, **refresh or restart each client** and confirm `handoff` appea
 | List handoffs | `$handoff list` | `/handoff list` |
 | Check the integration | `$handoff check` | `/handoff check` |
 
-**You never name a recipient.** The handoff is stored in the current workspace; whichever tool runs `receive` **in the same directory** claims it. The first session to claim it owns it, and the sending session cannot claim its own. If several are waiting, you are shown their IDs and asked to choose — unrelated tasks are never merged.
+**You never name a recipient.** The handoff is stored in the current workspace; whichever tool runs `receive` **in the same directory** claims it. The first session to claim it owns it, and the sending session cannot claim its own — if you try, it says so plainly rather than reporting "nothing here". If several are waiting, you are shown their IDs and asked to choose — unrelated tasks are never merged.
+
+**Sending again replaces your own pending handoff.** Do more work, run `send` again, and the earlier one from this same conversation is voided so the receiver gets the current version instead of a choice between two. Handoffs someone already claimed, and other conversations' handoffs, are never touched.
 
 See [the handoff skill reference](docs/handoff-skills.md) for details.
 
@@ -111,7 +113,7 @@ Skill files you edited yourself are preserved and reported as skipped. Existing 
 python3 -m unittest discover -s tests -v
 ```
 
-95 tests, standard library only, covering save/claim/concurrency/idempotency, workspace isolation, strict receipt validation, and install conflict protection with rollback. CI runs the suite on Python 3.9–3.13 and builds the wheel.
+100 tests, standard library only, covering save/claim/concurrency/idempotency, workspace isolation, strict receipt validation, and install conflict protection with rollback. CI runs the suite on Python 3.9–3.13 and builds the wheel.
 
 ## Known limits
 

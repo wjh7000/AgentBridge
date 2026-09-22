@@ -68,11 +68,13 @@ class Handoffs:
                 received_session TEXT,
                 received_agent TEXT,
                 received_at TEXT,
+                superseded_by TEXT,
                 PRIMARY KEY(namespace, id)
             )"""
         )
         columns = {row["name"] for row in self.connection.execute("PRAGMA table_info(handoff_packets)")}
-        for name, definition in (("source_session", "TEXT NOT NULL DEFAULT ''"), ("received_agent", "TEXT")):
+        for name, definition in (("source_session", "TEXT NOT NULL DEFAULT ''"), ("received_agent", "TEXT"),
+                                 ("superseded_by", "TEXT")):
             if name not in columns:
                 try:
                     self.connection.execute(f"ALTER TABLE handoff_packets ADD COLUMN {name} {definition}")
@@ -270,6 +272,31 @@ class Handoffs:
             )
             return packet
 
+    def supersede_previous(self, source: str, session_id: str, keep_id: str) -> list:
+        """Void this conversation's earlier handoffs that nobody has claimed.
+
+        Sending again after more work should replace the stale packet rather
+        than leave the receiver choosing between two versions of one task. A
+        handoff someone already claimed is never voided: that session may
+        already be acting on it.
+        """
+        source = _agent(source)
+        session_id = _identifier(session_id, "session_id")
+        rows = self.connection.execute(
+            """SELECT id FROM handoff_packets WHERE namespace = ? AND source = ?
+            AND source_session = ? AND id != ? AND received_session IS NULL
+            AND superseded_by IS NULL""",
+            (self.namespace, source, session_id, keep_id),
+        ).fetchall()
+        superseded = [row["id"] for row in rows]
+        if superseded:
+            self.connection.execute(
+                "UPDATE handoff_packets SET superseded_by = ? WHERE namespace = ? AND id IN (%s)"
+                % ",".join("?" * len(superseded)),
+                (keep_id, self.namespace, *superseded),
+            )
+        return superseded
+
     @staticmethod
     def _choice(row) -> dict:
         packet = json.loads(row["packet_json"])
@@ -285,7 +312,7 @@ class Handoffs:
             if packet_id is not None:
                 row = self.connection.execute(
                     """SELECT * FROM handoff_packets WHERE namespace = ? AND target IN (?, 'any') AND id = ?
-                    AND NOT (source = ? AND source_session = ?)""",
+                    AND superseded_by IS NULL AND NOT (source = ? AND source_session = ?)""",
                     (self.namespace, target, packet_id, target, session_id),
                 ).fetchone()
                 if row is None or (row["received_session"] is not None and
@@ -296,12 +323,21 @@ class Handoffs:
             else:
                 rows = self.connection.execute(
                     """SELECT * FROM handoff_packets WHERE namespace = ? AND target IN (?, 'any')
-                    AND received_session IS NULL AND NOT (source = ? AND source_session = ?)
+                    AND received_session IS NULL AND superseded_by IS NULL
+                    AND NOT (source = ? AND source_session = ?)
                     ORDER BY created_at, id""",
                     (self.namespace, target, target, session_id),
                 ).fetchall()
                 if not rows:
-                    return {"status": "empty"}
+                    # Distinguish "nothing here" from "the only one is yours",
+                    # which would otherwise read as if the send had failed.
+                    own = self.connection.execute(
+                        """SELECT 1 FROM handoff_packets WHERE namespace = ? AND target IN (?, 'any')
+                        AND received_session IS NULL AND superseded_by IS NULL
+                        AND source = ? AND source_session = ? LIMIT 1""",
+                        (self.namespace, target, target, session_id),
+                    ).fetchone()
+                    return {"status": "empty", "only_own": own is not None}
                 if len(rows) > 1:
                     return {"status": "choose", "items": [self._choice(item) for item in rows]}
                 row = rows[0]
@@ -322,4 +358,5 @@ class Handoffs:
         parameters.append(limit)
         rows = self.connection.execute(query + " ORDER BY created_at DESC, id DESC LIMIT ?", parameters).fetchall()
         return [dict(self._choice(row), target=row["target"],
-                     status="received" if row["received_session"] is not None else "ready") for row in rows]
+                     status="received" if row["received_session"] is not None
+                     else "superseded" if row["superseded_by"] else "ready") for row in rows]
