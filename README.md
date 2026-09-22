@@ -65,9 +65,11 @@ The boundary is the working directory itself; it never walks up into a parent. D
 
 The sending session writes it once **from the context already visible to it** — it does not re-read history, scan the repository, or spin up another model:
 
-`goal` `constraints` `completed` `decisions` `findings` `files` `verification` `next_steps` `blockers`
+`goal` `constraints` `completed` `in_progress` `decisions` `findings` `files` `verification` `next_steps` `blockers`
 
-The body is capped at 6,000 characters. Reference file paths instead of pasting code, separate observed evidence from the assistant's own claims, and record unknowns as unknown rather than inventing them.
+`in_progress` is the one people forget: work started but unfinished, and any broken or half-applied state the receiver would otherwise walk into. `verification` entries must carry a checkable anchor — the command run, the test name, the file inspected — or say "not verified".
+
+The body is capped at 8,000 characters, each list at 12 entries. When a list overflows, entries are chosen by what the receiver needs in order to continue, not by recency. Reference file paths instead of pasting code, separate observed evidence from the assistant's own claims, and record unknowns as unknown rather than inventing them.
 
 ## It will not fake success
 
@@ -109,7 +111,7 @@ Skill files you edited yourself are preserved and reported as skipped. Existing 
 python3 -m unittest discover -s tests -v
 ```
 
-89 tests, standard library only, covering save/claim/concurrency/idempotency, workspace isolation, strict receipt validation, and install conflict protection with rollback. CI runs the suite on Python 3.9–3.13 and builds the wheel.
+95 tests, standard library only, covering save/claim/concurrency/idempotency, workspace isolation, strict receipt validation, and install conflict protection with rollback. CI runs the suite on Python 3.9–3.13 and builds the wheel.
 
 ## Known limits
 

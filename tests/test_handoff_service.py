@@ -13,7 +13,7 @@ from agentbridge.store import Store
 
 
 def _body(goal="Resume the parser task"):
-    return dict(goal=goal, constraints=["Preserve the public API"], completed=["Parser implemented"],
+    return dict(goal=goal, constraints=["Preserve the public API"], completed=["Parser implemented"], in_progress=["Serializer half migrated"],
                 decisions=[], findings=[], files=["src/parser.py"], verification=["Integration unverified"],
                 next_steps=["Verify with the actual client"], blockers=[])
 

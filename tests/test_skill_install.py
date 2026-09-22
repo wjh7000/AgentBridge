@@ -388,7 +388,7 @@ class SkillAdapterTests(TemporarySkillCase):
 
     def test_temporary_project_handoff_crosses_installed_client_adapters(self):
         body = {"goal": "Finish the parser integration", "constraints": ["Keep compatibility"],
-                "completed": ["Wrote the parser"], "decisions": ["Use JSON"], "findings": [],
+                "completed": ["Wrote the parser"], "in_progress": [], "decisions": ["Use JSON"], "findings": [],
                 "files": ["parser.py"], "verification": ["Integration not run"],
                 "next_steps": ["Check the parser and run integration"], "blockers": []}
         (self.cwd / "parser.py").write_text("# project artifact\n")
@@ -419,7 +419,7 @@ class SkillAdapterTests(TemporarySkillCase):
         self.assertEqual(empty["status"], "empty")
 
     def test_reusing_workbuddy_session_across_invocations_keeps_ownership(self):
-        body = {"goal": "Continue the current project", "constraints": [], "completed": [],
+        body = {"goal": "Continue the current project", "constraints": [], "completed": [], "in_progress": [],
                 "decisions": [], "findings": [], "files": [], "verification": [],
                 "next_steps": ["Inspect the remaining work"], "blockers": []}
         source = self.call(agent="workbuddy")

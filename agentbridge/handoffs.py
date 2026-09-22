@@ -19,9 +19,9 @@ import uuid
 from .store import Store, _agent, _identifier, _integer, redact_summary
 
 
-BODY_MAX_CHARS = 6000
+BODY_MAX_CHARS = 8000
 LIST_FIELDS = (
-    "constraints", "completed", "decisions", "findings", "verification",
+    "constraints", "completed", "in_progress", "decisions", "findings", "verification",
     "next_steps", "blockers",
 )
 BODY_FIELDS = frozenset(("goal", "files") + LIST_FIELDS)
@@ -159,7 +159,7 @@ class Handoffs:
             raise ValueError("goal must be a nonempty string of at most 300 characters")
         for key in LIST_FIELDS + ("files",):
             values = body[key]
-            count, length = (20, 160) if key == "files" else (8, 500)
+            count, length = (20, 160) if key == "files" else (12, 500)
             if not isinstance(values, list) or len(values) > count:
                 raise ValueError(f"{key} must be a list of at most {count} strings")
             if any(not isinstance(item, str) or len(item) > length for item in values):

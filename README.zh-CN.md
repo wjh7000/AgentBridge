@@ -65,9 +65,11 @@ agentbridge-install
 
 来源会话**只用当前可见上下文**整理一次，不重读历史、不扫描仓库、不另开模型：
 
-`goal` `constraints` `completed` `decisions` `findings` `files` `verification` `next_steps` `blockers`
+`goal` `constraints` `completed` `in_progress` `decisions` `findings` `files` `verification` `next_steps` `blockers`
 
-正文上限 6,000 字符（目标约 1,000–1,500 中文字符）；引用文件路径而非粘贴代码；区分「观察到的证据」和「助手自述」；未知的内容记为未知，不编造。
+`in_progress` 是最容易被漏掉的一项：做了一半没做完的事，以及由此产生的中间/损坏状态（比如重构改了一半、当前编译不过）。`verification` 每条必须带可复核的锚点（跑过的命令、测试名、查过的文件），没验证就写「未验证」。
+
+正文上限 8,000 字符、每个列表最多 12 条（目标约 1,000–2,000 中文字符）。列表超限时按「B 继续工作需要什么」取舍，而不是按时间顺序。引用文件路径而非粘贴代码；区分「观察到的证据」和「助手自述」；未知的内容记为未知，不编造。
 
 ## 不会假装成功
 
@@ -109,7 +111,7 @@ python3 agentbridge.py uninstall-skills    # 或 agentbridge uninstall-skills
 python3 -m unittest discover -s tests -v
 ```
 
-89 个测试，纯标准库，覆盖交接的保存/领取/并发/幂等、工作区隔离、回执严格校验、安装冲突保护与回滚。CI 在 Python 3.9–3.13 上运行测试并构建 wheel。
+95 个测试，纯标准库，覆盖交接的保存/领取/并发/幂等、工作区隔离、回执严格校验、安装冲突保护与回滚。CI 在 Python 3.9–3.13 上运行测试并构建 wheel。
 
 ## 已知边界
 

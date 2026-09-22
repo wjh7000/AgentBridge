@@ -17,6 +17,7 @@ def _body(goal="Continue the project"):
         "goal": goal,
         "constraints": ["Keep the current API"],
         "completed": ["Implemented the parser"],
+        "in_progress": ["Serializer half migrated; tests do not pass yet"],
         "decisions": ["Use a project-local database"],
         "findings": ["Legacy configurations lack a version field"],
         "files": ["src/parser.py", "tests/test_parser.py"],
@@ -228,8 +229,8 @@ class HandoffTests(unittest.TestCase):
     def test_large_body_rejected_without_truncation_or_ready_state(self):
         self.handoffs.begin("claude", "source", "codex")
         body = _body()
-        body["findings"] = ["a" * 500] * 8
-        body["decisions"] = ["b" * 500] * 8
+        body["findings"] = ["a" * 500] * 12
+        body["decisions"] = ["b" * 500] * 12
         before = copy.deepcopy(body)
         with self.assertRaisesRegex(ValueError, str(BODY_MAX_CHARS)):
             self.handoffs.complete("claude", "source", body)
@@ -252,7 +253,7 @@ class HandoffTests(unittest.TestCase):
                 continue
             for value in ("plain string", ("tuple",), {}, None, [3], [False], [[]]):
                 invalid.append(dict(_body(), **{key: value}))
-            invalid.append(dict(_body(), **{key: ["a"] * (21 if key == "files" else 9)}))
+            invalid.append(dict(_body(), **{key: ["a"] * (21 if key == "files" else 13)}))
             invalid.append(dict(_body(), **{key: ["a" * (161 if key == "files" else 501)]}))
         for body in invalid:
             with self.subTest(body=body), self.assertRaises(ValueError):
