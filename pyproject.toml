@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentbridge-handoff"
+version = "0.2.0"
+description = "Local, project-scoped progress sharing and explicit handoffs across Codex, Claude Code, and WorkBuddy."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Junhan Wu" }]
+keywords = ["agent", "handoff", "claude-code", "codex", "workbuddy", "skill"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/junhan/agentbridge-handoff"
+Repository = "https://github.com/junhan/agentbridge-handoff"
+
+[project.scripts]
+agentbridge = "agentbridge.cli:main"
+agentbridge-install = "agentbridge.bootstrap:main"
+
+[tool.setuptools]
+packages = ["agentbridge"]
+
+[tool.setuptools.package-data]
+agentbridge = [
+    "skills/handoff/SKILL.md",
+    "skills/handoff/agents/*.yaml",
+    "skills/handoff/scripts/*.py",
+]

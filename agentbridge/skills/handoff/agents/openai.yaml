@@ -1,0 +1,6 @@
+interface:
+  display_name: "Handoff 项目交接"
+  short_description: "手动生成或接收当前项目的交接单，先读简短任务卡，再按需查看本地详情"
+  default_prompt: "Use $handoff help to show explicit handoff commands for the current project."
+policy:
+  allow_implicit_invocation: false
